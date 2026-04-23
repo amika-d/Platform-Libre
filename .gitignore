@@ -1,0 +1,40 @@
+# =========================
+# System Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Next.js (Frontend)
+# =========================
+# dependencies
+node_modules/
+# build output
+.next/
+out/
+build/
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Python & venv (Backend)
+# =========================
+# Virtual environment (CRITICAL: never commit your venv)
+venv/
+
+# Compiled python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# =========================
+# Environment Variables (Secrets)
+# =========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
