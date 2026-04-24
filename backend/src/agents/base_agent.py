@@ -210,13 +210,28 @@ async def base_agent(state: AgentState) -> AgentState:
         *_build_messages(state),
     ]
 
-    try:
-        tool_name, tool_input, response_text = await call_llm_route(messages, TOOLS)
-    except Exception as e:
-        print(f"[base_agent] LLM call failed: {e}")
+    tool_name, tool_input, response_text = await call_llm_route(messages, TOOLS)
+
+    if not tool_name:
+        print(f"[base_agent] Conversational reply — ending turn")
         return {
             **state,
             "next_action":   "__end__",
-            "response_text": "Connection error — please try again.",
+            "tool_input":    {},
+            "response_text": response_text or "How can I help?",
+            "thinking":      "",
             "_loop_count":   loop_count,
         }
+
+    display_text = response_text or TOOL_MESSAGES.get(tool_name, f"Running {tool_name}…")
+
+    print(f"[base_agent] → {tool_name}")
+
+    return {
+        **state,
+        "next_action":   tool_name,
+        "tool_input":    tool_input,
+        "response_text": display_text,
+        "thinking":      "",
+        "_loop_count":   loop_count,
+    }
