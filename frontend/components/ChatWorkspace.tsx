@@ -27,6 +27,7 @@ interface BaseMessage {
   stage?: Stage
   timestamp: string
   sourceDetails?: Array<{ id: string; domain: string; url: string }>
+  thinkingBlocks?: AnalyseStreamChunk[]
 }
 
 interface BattleCardMessage extends BaseMessage {
@@ -43,7 +44,6 @@ interface BattleCardMessage extends BaseMessage {
 interface TextMessage extends BaseMessage {
   type: 'text'
   content: string
-  thinkingBlocks?: AnalyseStreamChunk[]
 }
 
 interface ABMessage extends BaseMessage {
@@ -607,15 +607,16 @@ function MessageBubble({
         )}
 
         {/* Content */}
+        {msg.thinkingBlocks && msg.thinkingBlocks.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            {msg.thinkingBlocks.map((block, idx) => (
+              <ThinkingBlock key={idx} chunk={block} isStreaming={isStreaming} />
+            ))}
+          </div>
+        )}
+
         {msg.type === 'text' && (
           <>
-            {msg.thinkingBlocks && msg.thinkingBlocks.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                {msg.thinkingBlocks.map((block, idx) => (
-                  <ThinkingBlock key={idx} chunk={block} isStreaming={isStreaming} />
-                ))}
-              </div>
-            )}
             <StreamResponseCard text={msg.content} isStreaming={isStreaming} sourceDetails={msg.sourceDetails} />
           </>
         )}
@@ -1142,9 +1143,16 @@ export default function ChatWorkspace({
   }
 
   const parseEmailSequenceFromText = (rawText?: string): EmailSequenceAsset | null => {
-    const parsed = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'email_sequence')
-    if (!parsed || !Array.isArray(parsed.variants) || parsed.variants.length === 0) return null
-    return parsed
+    const parsedEmail = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'email_sequence')
+    if (parsedEmail && Array.isArray(parsedEmail.variants) && parsedEmail.variants.length > 0) return parsedEmail
+    
+    const parsedLiMessages = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'linkedin_messages')
+    if (parsedLiMessages && Array.isArray(parsedLiMessages.variants) && parsedLiMessages.variants.length > 0) return parsedLiMessages
+    
+    const parsedLiMessage = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'linkedin_message')
+    if (parsedLiMessage && Array.isArray(parsedLiMessage.variants) && parsedLiMessage.variants.length > 0) return parsedLiMessage
+
+    return null
   }
 
   const parseBattleCardFromText = (rawText?: string): BattleCardAsset | null => {
@@ -1176,11 +1184,14 @@ export default function ChatWorkspace({
     const node = (chunk.node || '').toLowerCase()
     const text = chunk.text || ''
 
+    const hasLiMsgAsset = asset?.linkedin_messages || asset?.linkedin_message;
+    const hasLiMsgText = /\[Drafted:\s*linkedin_messages?\]/i.test(text);
+
     // Ignore stale email sequence assets attached to generic chat turns.
-    if (!asset?.email_sequence) return false
-    if (/\[Drafted:\s*email_sequence\]/i.test(text)) return true
-    if (action.includes('generate_email_sequence') || action.includes('email_sequence')) return true
-    if (node.includes('generate_email_sequence')) return true
+    if (!asset?.email_sequence && !/\[Drafted:\s*email_sequence\]/i.test(text) && !hasLiMsgAsset && !hasLiMsgText) return false
+    if (/\[Drafted:\s*email_sequence\]/i.test(text) || hasLiMsgText) return true
+    if (action.includes('generate_email_sequence') || action.includes('email_sequence') || action.includes('linkedin_message')) return true
+    if (node.includes('generate_email_sequence') || node.includes('email_sequence') || node.includes('linkedin_message')) return true
 
     return false
   }
@@ -1204,11 +1215,13 @@ export default function ChatWorkspace({
     const asset = chunk.asset as Record<string, unknown> | undefined
     const action = (chunk.action || '').toLowerCase()
     const node = (chunk.node || '').toLowerCase()
+    const text = (chunk.text || '').toLowerCase()
 
     // Ignore stale linkedin assets attached to generic chat turns.
-    if (!asset?.linkedin_posts) return false
+    if (!asset?.linkedin_posts && !text.includes('[drafted: linkedin_post')) return false
     if (action.includes('generate_linkedin_post') || action.includes('linkedin_post') || action.includes('linkedin_posts')) return true
     if (node.includes('generate_linkedin_post') || node.includes('linkedin_post') || node.includes('linkedin_posts')) return true
+    if (text.includes('[drafted: linkedin_post')) return true
 
     return false
   }
@@ -1269,12 +1282,27 @@ export default function ChatWorkspace({
     return null
   }
 
+  const parseLinkedInPostsFromText = (rawText?: string): LinkedInPostsAsset | null => {
+    const postsAsset = parseDraftedAssetFromText<LinkedInPostsAsset>(rawText, 'linkedin_posts')
+    if (postsAsset?.posts?.length) return postsAsset
+
+    const singlePostAsset = parseDraftedAssetFromText<LinkedInPostsAsset>(rawText, 'linkedin_post')
+    if (singlePostAsset?.posts?.length) return singlePostAsset
+
+    const postsArray = parseDraftedAssetFromText<LinkedInGeneratedPost[]>(rawText, 'linkedin_posts')
+    if (Array.isArray(postsArray) && postsArray.length > 0) return { posts: postsArray }
+
+    return null
+  }
+
   const buildLinkedInPostMessage = (chunk: AnalyseStreamChunk, streamMessageId: string): LinkedInPostMessage | null => {
     if (!isLinkedInPostResponseChunk(chunk)) return null
 
     const asset = chunk.asset as Record<string, unknown> | undefined
     const linkedinAsset = asset?.linkedin_posts as LinkedInPostsAsset | undefined
-    const posts = (linkedinAsset?.posts || []).filter(
+    const fromText = parseLinkedInPostsFromText(chunk.text)
+    
+    const posts = (linkedinAsset?.posts || fromText?.posts || []).filter(
       post => Boolean(post) && Boolean((post.hook || '').trim() || (post.body || '').trim())
     )
 
@@ -1450,33 +1478,33 @@ export default function ChatWorkspace({
       gaps,
     }
   }
-  const isValidVariant = (variant: EmailSequenceVariant): boolean => {
+  const isValidVariant = (variant: any): boolean => {
     // Check if variant has meaningful data
     const hasAngle = Boolean(variant.angle || variant.hypothesis)
-    const hasBody = Boolean(variant.touch_1?.body || variant.signal_reference)
-    const hasCta = Boolean(variant.touch_1?.cta)
+    const hasBody = Boolean(variant.touch_1?.body || variant.body || variant.signal_reference)
+    const hasCta = Boolean(variant.touch_1?.cta || variant.cta)
     
     // At least 2 of these should be present
     return [hasAngle, hasBody, hasCta].filter(Boolean).length >= 2
   }
 
-  const normalizeEmailVariant = (variant: EmailSequenceVariant, fallbackLabel: 'A' | 'B') => {
+  const normalizeEmailVariant = (variant: any, fallbackLabel: 'A' | 'B') => {
     const label = variant.id || fallbackLabel
     const firstTouch = variant.touch_1 || {}
 
     return {
       label: `Variant ${label}`,
-      angle: variant.angle || variant.hypothesis || 'Email sequence variant',
-      subject: firstTouch.subject || undefined,
-      hook: firstTouch.body || variant.signal_reference || 'Generated email sequence variant',
-      cta: firstTouch.cta || 'Review sequence',
+      angle: variant.angle || variant.hypothesis || 'Outreach variant',
+      subject: firstTouch.subject || variant.subject || undefined,
+      hook: firstTouch.body || variant.body || variant.signal_reference || 'Generated outreach variant',
+      cta: firstTouch.cta || variant.cta || 'Review sequence',
       score: undefined,
     }
   }
 
   const buildEmailSequenceMessage = (chunk: AnalyseStreamChunk, streamMessageId: string): ABMessage | null => {
     const asset = chunk.asset as Record<string, unknown> | undefined
-    const emailSequenceFromAsset = asset?.email_sequence as EmailSequenceAsset | undefined
+    const emailSequenceFromAsset = (asset?.email_sequence || asset?.linkedin_messages || asset?.linkedin_message) as EmailSequenceAsset | undefined
     const emailSequenceFromText = parseEmailSequenceFromText(chunk.text)
     const emailSequence = emailSequenceFromAsset || emailSequenceFromText
     const variants = emailSequence?.variants || []
@@ -1584,7 +1612,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, battleCardMessage]
 
           const next = [...prev]
-          next[index] = battleCardMessage
+          next[index] = { ...battleCardMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1598,7 +1626,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, emailSequenceMessage]
 
           const next = [...prev]
-          next[index] = emailSequenceMessage
+          next[index] = { ...emailSequenceMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1612,7 +1640,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, linkedInPostMessage]
 
           const next = [...prev]
-          next[index] = linkedInPostMessage
+          next[index] = { ...linkedInPostMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1626,7 +1654,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, flyerMessage]
 
           const next = [...prev]
-          next[index] = flyerMessage
+          next[index] = { ...flyerMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1640,7 +1668,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, prospectApprovalMessage]
 
           const next = [...prev]
-          next[index] = prospectApprovalMessage
+          next[index] = { ...prospectApprovalMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1654,7 +1682,7 @@ export default function ChatWorkspace({
           if (index === -1) return [...prev, competitiveMapMessage]
 
           const next = [...prev]
-          next[index] = competitiveMapMessage
+          next[index] = { ...competitiveMapMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
           return next
         })
         hasStreamedText = true
@@ -1718,15 +1746,16 @@ export default function ChatWorkspace({
         const next = [...prev]
         const existing = next[index]
         if (existing.type !== 'text') {
-          next[index] = {
-            id: streamMessageId,
-            role: 'agent',
-            type: 'text',
+          const updated = {
+            ...existing,
             stage: stage ?? existing.stage,
-            content: chunkText,
             timestamp,
-            thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined,
+            thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : existing.thinkingBlocks,
+          } as any
+          if ('intro' in updated) {
+            updated.intro = chunkText || updated.intro
           }
+          next[index] = updated as Message
           return next
         }
 
