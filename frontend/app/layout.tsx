@@ -1,49 +1,39 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
+import { Playfair_Display, JetBrains_Mono, DM_Sans } from 'next/font/google'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-display',
+  weight: ['400', '600', '700'],
+})
+
+const jetbrains = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  weight: ['300', '400', '500'],
+})
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  weight: ['300', '400', '500', '600'],
+})
 
 export const metadata: Metadata = {
-  title: 'Document Chat - AI Assistant',
-  description: 'Chat with your documents. Ask questions about your knowledge base powered by AI.',
-  generator: 'v0.app',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
+  title: 'Veracity — Signal to Action',
+  description: 'From market signal to live campaign in a single conversation',
 }
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en" className="dark">
-      <body className="font-sans antialiased">
+    <html lang="en">
+      <body className={`${playfair.variable} ${jetbrains.variable} ${dmSans.variable}`}>
         {children}
-        <Analytics />
       </body>
     </html>
   )

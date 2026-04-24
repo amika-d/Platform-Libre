@@ -1,0 +1,8 @@
+node_modules
+
+# Local environment files
+.env.local
+.env.local.example
+
+# Next.js build artifacts
+.next
