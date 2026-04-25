@@ -16,6 +16,7 @@ export interface AnalyseStreamChunk {
 	done?: boolean
 	status?: string
 	type?: string // 'thinking', 'response', etc.
+	thinking?: string // Added thinking explicitly
 	domain?: string // research domain name (e.g., 'market', 'competitor')
 	summary?: string // thinking/research summary
 	opportunities?: string[] // research opportunities
@@ -162,6 +163,7 @@ export async function streamAnalyse(
 		let receivedAnyChunk = false
 
 		try {
+			console.log(`[SSE] Attempting connection to ${baseUrl}...`)
 			const response = await openAnalyseStream(baseUrl, payload, handlers.signal)
 
 			if (!response.ok) {
@@ -173,13 +175,18 @@ export async function streamAnalyse(
 				throw new Error('Streaming response body is missing.')
 			}
 
+			console.log(`[SSE] Connected to ${baseUrl}. Streaming started.`)
+
 			const reader = response.body.getReader()
 			const decoder = new TextDecoder()
 			let buffer = ''
 
 			while (true) {
 				const { value, done } = await reader.read()
-				if (done) break
+				if (done) {
+					console.log('[SSE] Stream reading finished completely.')
+					break
+				}
 
 				buffer += decoder.decode(value, { stream: true })
 
@@ -191,6 +198,7 @@ export async function streamAnalyse(
 					const chunks = parseSseFrame(frame)
 					for (const chunk of chunks) {
 						receivedAnyChunk = true
+						console.log('[SSE] Parsed chunk:', chunk.node || chunk.status || chunk.error || 'unknown')
 						handlers.onChunk(chunk)
 					}
 
@@ -202,6 +210,7 @@ export async function streamAnalyse(
 				const trailing = parseSseFrame(buffer)
 				for (const chunk of trailing) {
 					receivedAnyChunk = true
+					console.log('[SSE] Parsed trailing chunk:', chunk.node || chunk.status || chunk.error || 'unknown')
 					handlers.onChunk(chunk)
 				}
 			}
@@ -214,6 +223,7 @@ export async function streamAnalyse(
 
 			// Some browsers report an incomplete chunked encoding error even after valid SSE chunks.
 			if (receivedAnyChunk && isRecoverableChunkTermination(error)) {
+				console.warn('[SSE] Recoverable chunk termination error caught (stream closed early):', error)
 				return
 			}
 

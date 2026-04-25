@@ -7,6 +7,9 @@ import {
 } from 'lucide-react'
 import type { HistoryItem } from './HistoryPanel'
 import type { SidebarTab } from './ContextPanel'
+import { Logo } from './Logo'
+
+import { useRouter } from 'next/navigation'
 
 type NavItem = {
   icon: typeof Zap
@@ -44,6 +47,7 @@ export default function Sidebar({ activeTab, onNavigate, onNewChat, onClearCurre
   const [expanded, setExpanded] = useState(false)
   const [navOpen, setNavOpen] = useState(true)
   const [recentOpen, setRecentOpen] = useState(true)
+  const router = useRouter();
 
   return (
     <aside
@@ -66,19 +70,8 @@ export default function Sidebar({ activeTab, onNavigate, onNewChat, onClearCurre
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: expanded ? 'space-between' : 'center', gap: 8, marginBottom: expanded ? 4 : 20 }}>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 6,
-            background: 'var(--signal)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <Zap size={18} color="#ffffff" strokeWidth={2.5} />
+        <div onClick={() => router.push('/new-chat')} style={{ cursor: 'pointer' }}>
+          <Logo size={36} iconSize={22} background="#ffffff" />
         </div>
         {expanded && (
           <p style={{ fontSize: 28, lineHeight: 1, color: 'var(--text-muted)', marginLeft: 'auto', marginRight: 2 }}>⋯</p>
@@ -179,13 +172,13 @@ export default function Sidebar({ activeTab, onNavigate, onNewChat, onClearCurre
               onMouseEnter={e => {
                 if (!active) {
                   (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated)'
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
+                    ; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
                 }
               }}
               onMouseLeave={e => {
                 if (!active) {
                   (e.currentTarget as HTMLButtonElement).style.background = 'transparent'
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
+                    ; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
                 }
               }}
             >
@@ -239,78 +232,78 @@ export default function Sidebar({ activeTab, onNavigate, onNewChat, onClearCurre
           {recentOpen && (
             <div style={{ overflowY: 'auto', paddingRight: 2 }}>
               {historyItems.map((item) => (
-              (() => {
-                const isActiveRecent = item.id === activeRecentId
-                return (
-              <button
-                key={item.id}
-                onClick={() => onSelectRecent(item.id)}
-                style={{
-                  width: '100%',
-                  background: isActiveRecent ? 'var(--signal-glow)' : 'transparent',
-                  textAlign: 'left',
-                  borderRadius: 8,
-                  padding: '8px 8px',
-                  cursor: 'pointer',
-                  marginBottom: 2,
-                  border: isActiveRecent ? '1px solid var(--signal-dim)' : '1px solid transparent',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-                className="session-item"
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated)' }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isActiveRecent ? 'var(--signal-glow)' : 'transparent' }}
-              >
-                <p style={{ fontSize: 13, color: isActiveRecent ? 'var(--signal)' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2, width: 'calc(100% - 20px)' }}>
-                  {item.title}
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: stageColor[item.stage], flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {item.timestamp}
-                  </span>
-                </div>
+                (() => {
+                  const isActiveRecent = item.id === activeRecentId
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => onSelectRecent(item.id)}
+                      style={{
+                        width: '100%',
+                        background: isActiveRecent ? 'var(--signal-glow)' : 'transparent',
+                        textAlign: 'left',
+                        borderRadius: 8,
+                        padding: '8px 8px',
+                        cursor: 'pointer',
+                        marginBottom: 2,
+                        border: isActiveRecent ? '1px solid var(--signal-dim)' : '1px solid transparent',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                      className="session-item"
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-elevated)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = isActiveRecent ? 'var(--signal-glow)' : 'transparent' }}
+                    >
+                      <p style={{ fontSize: 13, color: isActiveRecent ? 'var(--signal)' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 2, width: 'calc(100% - 20px)' }}>
+                        {item.title}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: stageColor[item.stage], flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.timestamp}
+                        </span>
+                      </div>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onDeleteRecent(item.id)
-                  }}
-                  className="delete-session-btn"
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    right: 6,
-                    width: 24,
-                    height: 24,
-                    borderRadius: 4,
-                    border: 'none',
-                    background: 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    opacity: 0,
-                    transition: 'all 0.1s ease',
-                  }}
-                  onMouseEnter={e => {
-                    e.stopPropagation()
-                    e.currentTarget.style.background = 'rgba(255, 0, 0, 0.1)'
-                    e.currentTarget.style.color = '#ff4d4d'
-                  }}
-                  onMouseLeave={e => {
-                    e.stopPropagation()
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.color = 'var(--text-muted)'
-                  }}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </button>
-                )
-              })()
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onDeleteRecent(item.id)
+                        }}
+                        className="delete-session-btn"
+                        style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 6,
+                          width: 24,
+                          height: 24,
+                          borderRadius: 4,
+                          border: 'none',
+                          background: 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          opacity: 0,
+                          transition: 'all 0.1s ease',
+                        }}
+                        onMouseEnter={e => {
+                          e.stopPropagation()
+                          e.currentTarget.style.background = 'rgba(255, 0, 0, 0.1)'
+                          e.currentTarget.style.color = '#ff4d4d'
+                        }}
+                        onMouseLeave={e => {
+                          e.stopPropagation()
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.color = 'var(--text-muted)'
+                        }}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </button>
+                  )
+                })()
               ))}
             </div>
           )}

@@ -88,7 +88,7 @@ class AgentState(TypedDict):
     campaign_launch_time:    str             # ISO timestamp of campaign launch
 
 # ── Factory Function ─────────────────────────────────────────────────────────
-
+    last_action: str
 def create_initial_state(
     query: str,
     session_id: str,
@@ -172,4 +172,5 @@ def create_initial_state(
         "outreach_status": [],
         "campaign_launched": False,
         "campaign_launch_time": "",
+        "last_action": ""
     }

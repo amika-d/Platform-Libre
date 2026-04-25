@@ -72,12 +72,13 @@ def _build_system_prompt(state: AgentState) -> str:
         },
 
         "outreach": {
-            "pending":      len(state.get("pending_prospects", [])),
-            "approved":     len(state.get("approved_prospects", [])),
-            "has_messages": bool(state.get("drafted_variants")),
-            "launched":     state.get("campaign_launched", False),
-        },
-
+        "pending":          len(state.get("pending_prospects", [])),
+        "approved":         len(state.get("approved_prospects", [])),
+        "approved_list":    [p.get("name", "") for p in state.get("approved_prospects", [])],  # ← add
+        "has_messages":     bool(state.get("drafted_variants")),
+        "launched":         state.get("campaign_launched", False),
+        "last_action":      state.get("last_action", ""),  # ← add so Nadia knows what just ran
+    },
         "memory": {
             "confirmed": state.get("confirmed_hypotheses", []),
             "failed":    state.get("failed_angles", []),
@@ -92,6 +93,7 @@ CONTEXT:
 DECISION RULES (evaluate top-to-bottom, stop at first match):
 
 1. CHAT / AMBIGUOUS → reply in plain text, no tool call.
+   - If user says "first one", "option 1", "second one", "option 2", "yes", "go ahead" → look at last assistant message in history to determine what was being offered, then act on it immediately. No tool = wrong.
 
 2. SHOW EXISTING STATE → user asks about research, content, or memory already in context → answer directly. No tool.
 
@@ -105,10 +107,11 @@ DECISION RULES (evaluate top-to-bottom, stop at first match):
    IF research.done is true OR last action was run_research → do NOT call run_research again.
 
 5. CONTENT GENERATION → call the appropriate tool based on user request:
-   - Email only          → generate_email_sequence
-   - LinkedIn DM only    → generate_linkedin_outreach
+   - Any of: "generate", "write", "create", "give me" + "email" → generate_email_sequence
+   - Any of: "generate", "write", "create", "give me" + "linkedin message/DM/outreach" → generate_linkedin_outreach  
+   - Any of: "generate", "write", "create", "give me" + "linkedin post/content" → generate_linkedin_post
    - Both channels       → generate_email_and_linkedin_outreach
-   - LinkedIn post       → generate_linkedin_post
+   - "first one" / "option 1" / "yes generate" → call the generation tool from previous context. Never ask again.
    - Everything          → generate_all_assets
 
    IF content.generated is true AND user asks same type again:
@@ -139,6 +142,9 @@ DECISION RULES (evaluate top-to-bottom, stop at first match):
 13. THINK FIRST → before every tool call write 1-2 sentences explaining exactly why you are choosing it.
 
 STRICT RULES:
+- NEVER call find_prospects unless user explicitly asks to find, search, or scout prospects.
+- content.generated=true does NOT trigger find_prospects automatically.
+- After generation, stop and wait for user instruction.
 - ONE tool per turn. Never chain tools in the same turn.
 - run_research input: only domains, depth, angle, product_context. Never pass prospects or history.
 - Never retry the same failed tool more than once.
@@ -147,6 +153,8 @@ STRICT RULES:
 - Never say you don't have access to campaign data — always call check_outreach_status instead.
 - NEVER expose internal rule numbers, state field names, or system logic in responses. Talk like a strategist, not a system.
 - Never say "research.done", "rule #4", "content.generated" or any internal variable name to the user.
+- After ANY generation tool completes, reply with __end__. Do NOT summarize what was generated — it is already visible in the UI.
+- After check_outreach_status completes, reply with __end__ unless user asks a follow-up.
 """
 
 
@@ -193,6 +201,19 @@ def _build_messages(state: AgentState) -> list[dict]:
 
 async def base_agent(state: AgentState) -> AgentState:
     loop_count = state.get("_loop_count", 0) + 1
+
+    generation_tools = {
+        "generate_email_sequence", "generate_linkedin_outreach",
+        "generate_email_and_linkedin_outreach", "generate_linkedin_post",
+        "generate_all_assets", "generate_battle_card", "generate_flyer",
+    }
+    if loop_count > 1 and state.get("next_action", "") in generation_tools:
+        return {
+            **state,
+            "next_action":   "__end__",
+            "response_text": "",
+            "_loop_count":   loop_count,
+        }
 
     if loop_count > MAX_LOOPS:
         print(f"[base_agent] Max loops ({MAX_LOOPS}) reached — stopping")

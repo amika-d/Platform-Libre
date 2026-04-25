@@ -5,6 +5,7 @@ interface StreamResponseCardProps {
   text: string
   isStreaming?: boolean
   sourceDetails?: Array<{ id: string; domain: string; url: string }>
+  isThinking?: boolean
 }
 
 interface StreamPayload {
@@ -124,7 +125,7 @@ function formatStructuredResponse(text: string): string {
     .trim()
 }
 
-export default function StreamResponseCard({ text, isStreaming = false, sourceDetails }: StreamResponseCardProps) {
+export default function StreamResponseCard({ text, isStreaming = false, sourceDetails, isThinking = false }: StreamResponseCardProps) {
   const cleaned = extractStreamDisplayText(text)
   const [visibleLength, setVisibleLength] = useState(0)
 
@@ -164,15 +165,17 @@ export default function StreamResponseCard({ text, isStreaming = false, sourceDe
   if (sections.length === 0) return null
 
   return (
-    <div
-      style={{
-        borderRadius: 10,
-        border: '1px solid var(--border-bright)',
-        background: 'var(--bg-card)',
-        padding: '12px 14px',
-      }}
-    >
-      {sections.map((section, sectionIndex) => {
+      <div
+        style={{
+          borderRadius: 10,
+          border: '1px solid var(--border-bright)',
+          background: isThinking ? 'var(--bg-elevated)' : 'var(--bg-card)',
+          padding: '12px 14px',
+          fontStyle: isThinking ? 'italic' : 'normal',
+          opacity: isThinking ? 0.85 : 1,
+        }}
+      >
+        {sections.map((section, sectionIndex) => {
         const lines = section.split('\n').map(line => line.trim()).filter(Boolean)
         const heading = lines.length === 1 ? lines[0].match(/^(#{1,3})\s+(.+)$/) : null
         const isOrderedList = lines.length > 0 && lines.every(line => /^\d+\.\s+/.test(line))

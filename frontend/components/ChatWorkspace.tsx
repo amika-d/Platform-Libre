@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Send, Square, Zap, Plus, Mic, Sparkles, FileText, Search, GitBranch, BarChart2 } from 'lucide-react'
+import { Logo } from './Logo'
 import StageBadge, { Stage } from './StageBadge'
 import ABCard from './ABCard'
 import BattleCard from './BattleCard'
@@ -28,6 +29,7 @@ interface BaseMessage {
   timestamp: string
   sourceDetails?: Array<{ id: string; domain: string; url: string }>
   thinkingBlocks?: AnalyseStreamChunk[]
+  thinking?: string
 }
 
 interface BattleCardMessage extends BaseMessage {
@@ -330,9 +332,7 @@ const DEMO_MESSAGES: Message[] = [
 function TypingIndicator() {
   return (
     <div style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '12px 0' }}>
-      <div style={{ width: 28, height: 28, borderRadius: 6, background: 'var(--signal-glow)', border: '1px solid var(--border-bright)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Zap size={13} color="var(--signal)" strokeWidth={2.5} />
-      </div>
+      <Logo size={28} iconSize={18} background="#ffffff" />
       <div style={{ display: 'flex', gap: 4, padding: '8px 12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, alignItems: 'center' }}>
         <div className="typing-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-muted)' }} />
         <div className="typing-dot" style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--text-muted)' }} />
@@ -461,24 +461,24 @@ function EmptyLandingState({
               <Plus size={18} strokeWidth={2} />
             </button>
 
-              <button
-                type="button"
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 999,
-                  border: 'none',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-                onClick={onSubmit}
-              >
-                <Mic size={16} strokeWidth={2} />
-              </button>
+            <button
+              type="button"
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 999,
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+              onClick={onSubmit}
+            >
+              <Mic size={16} strokeWidth={2} />
+            </button>
           </div>
         </div>
 
@@ -513,14 +513,14 @@ function EmptyLandingState({
                   alignItems: 'center',
                   gap: 8,
                   borderRadius: 999,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-card)',
-                    color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-secondary)',
                   padding: '13px 18px',
                   cursor: 'pointer',
                   fontSize: 16,
                   lineHeight: 1,
-                    boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
                 }}
               >
                 <Icon size={16} strokeWidth={2} />
@@ -582,22 +582,8 @@ function MessageBubble({
 
   return (
     <div className="msg-in" style={{ display: 'flex', gap: 10, marginBottom: 20, alignItems: 'flex-start' }}>
-      {/* Agent avatar */}
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          background: 'var(--signal-glow)',
-          border: '1px solid var(--border-bright)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0,
-          marginTop: 2,
-        }}
-      >
-        <Zap size={13} color="var(--signal)" strokeWidth={2.5} />
+      <div style={{ marginTop: 2 }}>
+        <Logo size={28} iconSize={18} background="#ffffff" />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -612,6 +598,12 @@ function MessageBubble({
             {msg.thinkingBlocks.map((block, idx) => (
               <ThinkingBlock key={idx} chunk={block} isStreaming={isStreaming} />
             ))}
+          </div>
+        )}
+
+        {msg.thinking && (
+          <div style={{ marginBottom: 12 }}>
+            <StreamResponseCard text={msg.thinking} isStreaming={isStreaming} isThinking={true} />
           </div>
         )}
 
@@ -819,21 +811,8 @@ function PerplexityResearchDemo({
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            background: 'var(--signal-glow)',
-            border: '1px solid var(--border-bright)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            marginTop: 2,
-          }}
-        >
-          <Zap size={13} color="var(--signal)" strokeWidth={2.5} />
+        <div style={{ marginTop: 2 }}>
+          <Logo size={28} iconSize={18} background="#ffffff" />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1145,10 +1124,10 @@ export default function ChatWorkspace({
   const parseEmailSequenceFromText = (rawText?: string): EmailSequenceAsset | null => {
     const parsedEmail = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'email_sequence')
     if (parsedEmail && Array.isArray(parsedEmail.variants) && parsedEmail.variants.length > 0) return parsedEmail
-    
+
     const parsedLiMessages = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'linkedin_messages')
     if (parsedLiMessages && Array.isArray(parsedLiMessages.variants) && parsedLiMessages.variants.length > 0) return parsedLiMessages
-    
+
     const parsedLiMessage = parseDraftedAssetFromText<EmailSequenceAsset>(rawText, 'linkedin_message')
     if (parsedLiMessage && Array.isArray(parsedLiMessage.variants) && parsedLiMessage.variants.length > 0) return parsedLiMessage
 
@@ -1301,7 +1280,7 @@ export default function ChatWorkspace({
     const asset = chunk.asset as Record<string, unknown> | undefined
     const linkedinAsset = asset?.linkedin_posts as LinkedInPostsAsset | undefined
     const fromText = parseLinkedInPostsFromText(chunk.text)
-    
+
     const posts = (linkedinAsset?.posts || fromText?.posts || []).filter(
       post => Boolean(post) && Boolean((post.hook || '').trim() || (post.body || '').trim())
     )
@@ -1425,7 +1404,7 @@ export default function ChatWorkspace({
 
     // Generate intelligent gap zones based on competitor positions
     const gaps: GapZone[] = []
-    
+
     // Add your position as primary marker
     if (mapData.your_position) {
       gaps.push({
@@ -1483,7 +1462,7 @@ export default function ChatWorkspace({
     const hasAngle = Boolean(variant.angle || variant.hypothesis)
     const hasBody = Boolean(variant.touch_1?.body || variant.body || variant.signal_reference)
     const hasCta = Boolean(variant.touch_1?.cta || variant.cta)
-    
+
     // At least 2 of these should be present
     return [hasAngle, hasBody, hasCta].filter(Boolean).length >= 2
   }
@@ -1513,7 +1492,7 @@ export default function ChatWorkspace({
 
     // Prevent stale cards from rendering on unrelated conversational turns.
     if (!isEmailSequenceResponseChunk(chunk)) return null
-    
+
     // Only create AB card if variants have meaningful data
     if (!isValidVariant(variants[0]) || !isValidVariant(variants[1] || variants[0])) {
       return null
@@ -1597,6 +1576,9 @@ export default function ChatWorkspace({
     let hasStreamedText = false
     let streamDone = false
     let thinkingBlocks: AnalyseStreamChunk[] = []
+    let accumulatedAsset: Record<string, unknown> | undefined = undefined
+    let accumulatedText = ''
+    let accumulatedThinking = ''
 
     const getDisplayText = (chunk: AnalyseStreamChunk): string => {
       if (typeof chunk.text !== 'string') return ''
@@ -1605,92 +1587,109 @@ export default function ChatWorkspace({
     }
 
     const upsertStreamMessage = (chunk: AnalyseStreamChunk) => {
-      const battleCardMessage = buildBattleCardMessage(chunk, streamMessageId)
+      if (chunk.text && chunk.text.trim()) {
+        accumulatedText = chunk.text
+      }
+      if (chunk.thinking && chunk.thinking.trim()) {
+        accumulatedThinking = chunk.thinking
+      }
+      if (chunk.asset && Object.keys(chunk.asset).length > 0) {
+        accumulatedAsset = { ...(accumulatedAsset || {}), ...chunk.asset }
+      }
+
+      const syntheticChunk: AnalyseStreamChunk = {
+        ...chunk,
+        text: chunk.text || accumulatedText,
+        thinking: chunk.thinking || accumulatedThinking,
+        asset: (chunk.asset && Object.keys(chunk.asset).length > 0) ? chunk.asset : accumulatedAsset,
+      }
+
+      const battleCardMessage = buildBattleCardMessage(syntheticChunk, streamMessageId)
       if (battleCardMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, battleCardMessage]
+          if (index === -1) return [...prev, { ...battleCardMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...battleCardMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...battleCardMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      const emailSequenceMessage = buildEmailSequenceMessage(chunk, streamMessageId)
+      const emailSequenceMessage = buildEmailSequenceMessage(syntheticChunk, streamMessageId)
       if (emailSequenceMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, emailSequenceMessage]
+          if (index === -1) return [...prev, { ...emailSequenceMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...emailSequenceMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...emailSequenceMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      const linkedInPostMessage = buildLinkedInPostMessage(chunk, streamMessageId)
+      const linkedInPostMessage = buildLinkedInPostMessage(syntheticChunk, streamMessageId)
       if (linkedInPostMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, linkedInPostMessage]
+          if (index === -1) return [...prev, { ...linkedInPostMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...linkedInPostMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...linkedInPostMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      const flyerMessage = buildFlyerMessage(chunk, streamMessageId)
+      const flyerMessage = buildFlyerMessage(syntheticChunk, streamMessageId)
       if (flyerMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, flyerMessage]
+          if (index === -1) return [...prev, { ...flyerMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...flyerMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...flyerMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      const prospectApprovalMessage = buildProspectApprovalMessage(chunk, streamMessageId)
+      const prospectApprovalMessage = buildProspectApprovalMessage(syntheticChunk, streamMessageId)
       if (prospectApprovalMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, prospectApprovalMessage]
+          if (index === -1) return [...prev, { ...prospectApprovalMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...prospectApprovalMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...prospectApprovalMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      const competitiveMapMessage = buildCompetitiveMapMessage(chunk, streamMessageId)
+      const competitiveMapMessage = buildCompetitiveMapMessage(syntheticChunk, streamMessageId)
       if (competitiveMapMessage) {
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
-          if (index === -1) return [...prev, competitiveMapMessage]
+          if (index === -1) return [...prev, { ...competitiveMapMessage, thinking: syntheticChunk.thinking }]
 
           const next = [...prev]
-          next[index] = { ...competitiveMapMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined } as any
+          next[index] = { ...competitiveMapMessage, thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined, thinking: syntheticChunk.thinking } as any
           return next
         })
         hasStreamedText = true
         return
       }
 
-      if (chunk.type === 'thinking') {
-        thinkingBlocks.push(chunk)
+      if (syntheticChunk.type === 'thinking') {
+        thinkingBlocks.push(syntheticChunk)
         setMessages(prev => {
           const index = prev.findIndex(msg => msg.id === streamMessageId)
           if (index !== -1) {
@@ -1715,13 +1714,13 @@ export default function ChatWorkspace({
         return
       }
 
-      const chunkText = getDisplayText(chunk)
-      if (!chunkText) return
+      const chunkText = getDisplayText(syntheticChunk)
+      if (!chunkText && !syntheticChunk.thinking) return
 
-      const stage = resolveStage(chunk.action)
+      const stage = resolveStage(syntheticChunk.action)
       const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-      const asset = chunk.asset as Record<string, any> | undefined
+      const asset = syntheticChunk.asset as Record<string, any> | undefined
       const sourceDetails = asset?.source_details || asset?.sources || []
 
       setMessages(prev => {
@@ -1736,6 +1735,7 @@ export default function ChatWorkspace({
               type: 'text',
               stage,
               content: chunkText,
+              thinking: syntheticChunk.thinking,
               timestamp,
               thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : undefined,
               sourceDetails: Array.isArray(sourceDetails) && sourceDetails.length > 0 ? sourceDetails : undefined,
@@ -1751,6 +1751,7 @@ export default function ChatWorkspace({
             stage: stage ?? existing.stage,
             timestamp,
             thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : existing.thinkingBlocks,
+            thinking: syntheticChunk.thinking,
           } as any
           if ('intro' in updated) {
             updated.intro = chunkText || updated.intro
@@ -1762,7 +1763,8 @@ export default function ChatWorkspace({
         const existingText = existing as TextMessage
         next[index] = {
           ...existingText,
-          content: chunkText,
+          content: chunkText || existingText.content,
+          thinking: syntheticChunk.thinking,
           stage: stage ?? existingText.stage,
           timestamp,
           thinkingBlocks: thinkingBlocks.length > 0 ? [...thinkingBlocks] : existingText.thinkingBlocks,
@@ -2112,19 +2114,19 @@ export default function ChatWorkspace({
 
   const quickActions = activeTab === 'intelligence'
     ? [
-        'Generate positioning gap map',
-        'Generate competitor language map',
-        BATTLE_CARD_DEMO_LABEL,
-        'Generate audience pain map',
-        'Generate channel attention map',
-      ]
+      'Generate positioning gap map',
+      'Generate competitor language map',
+      BATTLE_CARD_DEMO_LABEL,
+      'Generate audience pain map',
+      'Generate channel attention map',
+    ]
     : [
-        'Scan competitor messaging',
-        'Generate LinkedIn post',
-        BATTLE_CARD_DEMO_LABEL,
-        'Run A/B on last variant',
-        'Show feedback signals',
-      ]
+      'Scan competitor messaging',
+      'Generate LinkedIn post',
+      BATTLE_CARD_DEMO_LABEL,
+      'Run A/B on last variant',
+      'Show feedback signals',
+    ]
 
   const showEmptyWorkspace = messages.length === 0 && !typing
   const forceOutreachQueueView = activeTab === 'outreach'
@@ -2150,7 +2152,7 @@ export default function ChatWorkspace({
       <div
         style={{
           height: 52,
-          borderBottom: '1px solid var(--border)',
+          // borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           padding: '0 20px',
@@ -2160,15 +2162,15 @@ export default function ChatWorkspace({
         }}
       >
         <div>
-          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-            Veracity
+          <p style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+            Platform Libre
           </p>
           <p style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            Signal → Intelligence → Action
+
           </p>
         </div>
 
-        
+
       </div>
 
       {/* Messages */}
@@ -2283,11 +2285,11 @@ export default function ChatWorkspace({
                 }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--signal-dim)'
+                    ; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--signal-dim)'
                 }}
                 onMouseLeave={e => {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'
-                  ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-bright)'
+                    ; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-bright)'
                 }}
               >
                 {action}

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Playfair_Display, JetBrains_Mono, DM_Sans } from 'next/font/google'
 import './globals.css'
+import { Logo } from '@/components/Logo'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -21,9 +22,14 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Veracity — Signal to Action',
+  title: 'Platform Libre',
   description: 'From market signal to live campaign in a single conversation',
+  icons: {
+    icon: '/hand-2.png',
+  }
 }
+
+
 
 export default function RootLayout({
   children,

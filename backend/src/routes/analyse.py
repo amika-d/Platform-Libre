@@ -151,6 +151,7 @@ async def _agent_sse_generator(agent: Any, query: str, session_id: str, request:
             done, _ = await asyncio.wait({pending_next}, timeout=heartbeat_seconds)
 
             if not done:
+                logger.debug("Yielding heartbeat ping for session %s", session_id)
                 yield ": ping\n\n"
                 continue
 
@@ -168,17 +169,23 @@ async def _agent_sse_generator(agent: Any, query: str, session_id: str, request:
                 if not isinstance(state_update, dict):
                     continue
 
+                logger.info("Agent yielded update for node: %s", node_name)
+
+                is_tool_call = bool(state_update.get("next_action") and state_update.get("next_action") != "__end__")
+
                 payload = {
-                    "node":   node_name,
-                    "action": state_update.get("next_action", ""),
-                    "text":   state_update.get("response_text", ""),
-                    "asset":  _extract_asset(state_update),
+                    "node":     node_name,
+                    "action":   state_update.get("next_action", ""),
+                    "text":     "" if is_tool_call else state_update.get("response_text", ""),
+                    "thinking": state_update.get("response_text", "") if is_tool_call else "",
+                    "asset":    _extract_asset(state_update),
                 }
 
                 yield _sse(payload)
                 await asyncio.sleep(0.05)
 
         if stream_completed and not await request.is_disconnected():
+            logger.info("Graph execution completed successfully for session %s", session_id)
             yield _sse({"done": True})
 
     except asyncio.CancelledError:

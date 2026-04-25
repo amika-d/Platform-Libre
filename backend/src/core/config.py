@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     FIRECRAWL_API_KEY: str = ""
     
     FAL_API_KEY: str = ""
-    #FAL_URL: str = "https://fal.run/xai/grok-imagine-image"
+    FAL_URL: str = "https://fal.run/xai/grok-imagine-image"
     
     # Databases
     POSTGRES_URI: str = ""

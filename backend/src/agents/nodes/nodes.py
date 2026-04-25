@@ -713,21 +713,25 @@ Return the exact same JSON structure as input."""
 
 
 async def update_state_node(state: AgentState) -> AgentState:
-    """
-    Dedicated node for state mutation and maintenance.
-    Runs after tool execution to ensure clean state transitions.
-    Note: _loop_count is managed by base_agent, not here.
-    """
     loop_count = state.get("_loop_count", 0)
     history = state.get("conversation_history", []).copy()
 
+    # Strip internal thinking bleed and prompt leak from history
     history = [
         msg for msg in history
         if not (
             msg.get("role") == "assistant" and
             "[Thinking:" in msg.get("content", "")
         )
+        and not (
+            msg.get("role") == "assistant" and
+            any(leak in msg.get("content", "") for leak in [
+                "research.done", "rule #", "content.generated",
+                "Decision:", "According to rule",
+            ])
+        )
     ]
+
     query = state.get("query", "")
     if query and not any(m.get("content") == query for m in history):
         history.append({"role": "user", "content": query})
@@ -738,10 +742,9 @@ async def update_state_node(state: AgentState) -> AgentState:
     if text and action != "__end__":
         if not history or history[-1].get("content") != text:
             history.append({"role": "assistant", "content": text})
-        
         history.append({
             "role": "user",
-            "content": f"SYSTEM NOTIFICATION: The '{action}' tool executed successfully. Summarize results or advise next step."
+            "content": f"SYSTEM NOTIFICATION: The '{action}' tool completed. Output is now visible to the user in the UI. Do NOT summarize or repeat. Reply with __end__ unless user asks something new."
         })
     elif text:
         if not history or history[-1].get("content") != text:
@@ -751,10 +754,15 @@ async def update_state_node(state: AgentState) -> AgentState:
         history = history[-15:]
 
     print(f"🔄 [update_state] Loop: {loop_count} | History: {len(history)}")
+    logger.info(f"🔄 [update_state] Loop: {loop_count} | History: {len(history)}")
 
-    updated = {"conversation_history": history}
+    updated = {
+        "conversation_history": history,
+        "response_text":        "",   # clear so next chunk doesn't repeat
+        "thinking":             "", 
+        "last_action":          state.get("next_action", "unknown")     
+    }
 
-    query = state.get("query", "")
     if (
         not state.get("summary") and
         not state.get("user_provided_research") and
@@ -765,6 +773,7 @@ async def update_state_node(state: AgentState) -> AgentState:
 
     return updated
 
+    
 async def process_feedback_node(state: AgentState) -> AgentState:
     print("--- NODE: process_feedback ---")
     campaign_id = state.get("campaign_id", "")
