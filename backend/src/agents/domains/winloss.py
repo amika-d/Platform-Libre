@@ -18,6 +18,7 @@ def _format(results: list[dict]) -> str:
 
 async def winloss_agent(brief: ResearchBrief) -> DomainResult:
     query = brief.targeted_query
+    print(f"\n🚀 [Win/Loss Agent] Researching: '{query}'")
     results = await win_loss_search(query)
     
     messages = [

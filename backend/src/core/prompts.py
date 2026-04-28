@@ -125,8 +125,15 @@ Return ONLY valid JSON, no markdown, no explanation:
     "specific executable action",
     "specific executable action",
     "specific executable action"
-  ]
-}}"""
+  ],
+  "domain_highlights": {{
+    "market": "one sentence key finding",
+    "competitor": "one sentence key finding",
+    "intent": "one sentence key finding"
+  }}
+}}
+Note: only include domains that ran in domain_highlights.
+"""
 
 
 def supervisor_prompt(query: str, memory_context: str = "") -> str:

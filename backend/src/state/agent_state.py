@@ -35,6 +35,7 @@ class AgentState(TypedDict):
     competitive_map:     dict
     domains_run:         list[str]
     domains_failed:      list[str]
+    domain_highlights:   dict
     
     # What the base_agent decided
     next_action: str
@@ -122,6 +123,7 @@ def create_initial_state(
         "competitive_map": {},
         "domains_run": [],
         "domains_failed": [],
+        "domain_highlights": {},
 
         # Routing / Execution
         "next_action": "",

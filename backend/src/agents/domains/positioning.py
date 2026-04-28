@@ -20,6 +20,7 @@ async def positioning_agent(brief: ResearchBrief) -> DomainResult:
     Positioning Intelligence Agent.
     """
     query = brief.targeted_query
+    print(f"\n🚀 [Positioning Agent] Researching: '{query}'")
     results = await positioning_search(query)
 
     # Add any direct URLs from the brief

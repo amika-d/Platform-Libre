@@ -69,6 +69,7 @@ async def intent_agent(brief: ResearchBrief) -> DomainResult:
     Analyzes buyer intent, personas, and verbatims.
     """
     query = brief.targeted_query
+    print(f"\n🚀 [Intent Agent] Researching: '{query}'")
     results = await search_intent(query)
 
     result = await call_llm_json([

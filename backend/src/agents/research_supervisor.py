@@ -51,7 +51,7 @@ Available domains:
 Rules:
 1. TARGETED QUERY: Generate a query for the PRODUCT and MARKET — not the user's raw request.
 2. NEVER add 'adjacent' unless the user explicitly asks about market threats or new entrants.
-3. If the depth is 'deep', prioritize more domains (4-5) which are most relevant; if 'quick', focus on 1-2 core domains.
+3. If the depth is 'deep', prioritize more domains (4-5) which are most relevant; if 'quick', focus on 1 core domains.
 
 Return ONLY valid JSON:
 {
@@ -202,6 +202,7 @@ async def supervisor(state: AgentState) -> AgentState:
         "citations":           synthesis.citations,
         "active_domains":      active_domains,
         "targeted_query":      targeted_query,
+        "domain_highlights":   synthesis.domain_highlights,
     })
 
     return updated

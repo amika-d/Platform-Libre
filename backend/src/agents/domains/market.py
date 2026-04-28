@@ -116,7 +116,7 @@ async def market_agent(brief: ResearchBrief) -> DomainResult:
     return DomainResult(
         domain="market",
         findings=json.dumps(result) if result else "{}",
-        raw_signals=[r.get("url", "") for r in results],
+        raw_signals=[r.get("url", "") for r in (results or [])],
         confidence_score=float(result.get("confidence", 0.5)) if result else 0.0,
-        citations=[{"source": r.get("source"), "url": r.get("url")} for r in results[:5]]
+        citations=[{"source": r.get("source"), "url": r.get("url")} for r in (results or [])[:5]]
     )

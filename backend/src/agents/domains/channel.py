@@ -41,6 +41,7 @@ async def channel_agent(brief: ResearchBrief) -> DomainResult:
     Channel Intelligence Agent.
     """
     query = brief.targeted_query
+    print(f"\n🚀 [Channel Agent] Researching: '{query}'")
 
     # ── Step 1: Signal Gathering ──────────────────────────────────────────
     t1, t2, t3 = await asyncio.gather(

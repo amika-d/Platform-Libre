@@ -22,6 +22,7 @@ async def contextual_agent(brief: ResearchBrief) -> DomainResult:
     Contextual & Temporal Intelligence Agent.
     """
     query = brief.targeted_query
+    print(f"\n🚀 [Contextual Agent] Researching: '{query}'")
     results = await contextual_search(query)
     
     messages = [

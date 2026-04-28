@@ -63,6 +63,8 @@ def _extract_json(raw: str) -> dict:
             return json.loads(candidate)
         except json.JSONDecodeError:
             pass
+    raise ValueError(f"Could not extract valid JSON from response. Raw length: {len(raw)} chars.")
+
 def _sanitize_unicode(text: str) -> str:
     return text.encode('utf-16', 'surrogatepass').decode('utf-16', 'ignore')
 
@@ -80,6 +82,7 @@ async def _complete(
         temperature=settings.TEMPERATURE,
         api_key=settings.OPENROUTER_API_KEY,
         api_base="https://openrouter.ai/api/v1",
+        
     )
     if tools:
         kwargs["tools"] = tools

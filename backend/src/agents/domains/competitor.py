@@ -161,8 +161,9 @@ async def competitor_agent(brief: ResearchBrief) -> DomainResult:
     """
     Competitor Intelligence Agent.
     """
+    query = brief.targeted_query
+    print(f"\n🚀 [Competitor Agent] Researching: '{query}'")
     run_start = time.perf_counter()
-    query: str = brief.targeted_query
 
     try:
         # ── Phase 1: Signal Gathering ──────────────────────────────────────

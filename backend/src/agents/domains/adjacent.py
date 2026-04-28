@@ -27,6 +27,9 @@ async def adjacent_agent(brief: ResearchBrief) -> DomainResult:
     Runs sub-searches in parallel and synthesizes.
     """
     query = brief.targeted_query
+    print(f"\n🚀 [Adjacent Agent] Researching: '{query}'")
+    logger.info(f"🚀 [Adjacent Agent] Researching: '{query}'")
+
     
     # ── Phase 1: Sub-searches ─────────────────────────────────────────────
     # We do these directly here instead of using sub-agents to keep the contract clean

@@ -129,4 +129,5 @@ async def synthesis_agent(
         domains_failed=domains_failed,
         citations=all_citations,
         competitive_map=competitive_map_data,
+        domain_highlights=result.get("domain_highlights", {}),
     )

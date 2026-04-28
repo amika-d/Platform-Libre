@@ -24,7 +24,7 @@ TOOL_MESSAGES = {
 
 
 def _has_research(state: AgentState) -> bool:
-    return bool(state.get("summary")) or bool(state.get("user_provided_research"))
+    return bool(state.get("summary")) or bool(state.get("user_provided_research")) or bool(state.get("top_opportunities"))
 
 
 def _preview_variants(state: AgentState) -> dict:
@@ -61,6 +61,9 @@ def _build_system_prompt(state: AgentState) -> str:
             "summary":           (state.get("summary", "") or state.get("user_provided_research", ""))[:500],
             "top_opportunities": state.get("top_opportunities", []),
             "top_risks":         state.get("top_risks", []),
+            "domains_run":       state.get("active_domains", []),
+            "targeted_query":    state.get("targeted_query", ""), 
+            "domain_highlights": state.get("domain_highlights", {}),
         },
 
         "content": {
@@ -72,13 +75,16 @@ def _build_system_prompt(state: AgentState) -> str:
         },
 
         "outreach": {
-        "pending":          len(state.get("pending_prospects", [])),
-        "approved":         len(state.get("approved_prospects", [])),
-        "approved_list":    [p.get("name", "") for p in state.get("approved_prospects", [])],  # ← add
-        "has_messages":     bool(state.get("drafted_variants")),
-        "launched":         state.get("campaign_launched", False),
-        "last_action":      state.get("last_action", ""),  # ← add so Nadia knows what just ran
-    },
+            "pending":          len(state.get("pending_prospects", [])),
+            "approved":         len(state.get("approved_prospects", [])),
+            "approved_list": [
+                p.get("name", "Unknown") 
+                for p in state.get("approved_prospects", [])
+            ][:10],  # ← add
+            "has_messages":     bool(state.get("drafted_variants")),
+            "launched":         state.get("campaign_launched", False),
+            "last_action":      state.get("last_action", ""),  # ← add so Nadia knows what just ran
+        },
         "memory": {
             "confirmed": state.get("confirmed_hypotheses", []),
             "failed":    state.get("failed_angles", []),
@@ -89,7 +95,7 @@ def _build_system_prompt(state: AgentState) -> str:
 
 CONTEXT:
 {json.dumps(context, indent=2)}
-
+AFTER `run_research` COMPLETES: You MUST call a generation to
 DECISION RULES (evaluate top-to-bottom, stop at first match):
 
 1. CHAT / AMBIGUOUS → reply in plain text, no tool call.
@@ -99,12 +105,10 @@ DECISION RULES (evaluate top-to-bottom, stop at first match):
 
 3. USER PROVIDED RESEARCH → research.source is "user_provided" → treat as complete. Skip run_research. Go straight to generation.
 
-4. RESEARCH NEEDED → research.done is false AND user wants content →
-   - If user message contains "skip research", "no research", "just generate", "without research", "generate now" → call generation tool IMMEDIATELY. No questions.
-   - Otherwise ask ONCE: "I can generate now or run research first — your call."
-   - User says research → call run_research.
-   - User says generate → call generation tool with your knowledge about the product. Do not ask again.
-   IF research.done is true OR last action was run_research → do NOT call run_research again.
+4. RESEARCH NEEDED → research.done is false AND (user asks to research OR user wants content) →
+   - Call run_research immediately. Do not ask for permission.
+   - If user explicitly says "skip research" or "just generate" → call generation tool IMMEDIATELY.
+   IF research.done is true OR last action was run_research → do NOT call run_research again unless user asks for NEW domains.
 
 5. CONTENT GENERATION → call the appropriate tool based on user request:
    - Any of: "generate", "write", "create", "give me" + "email" → generate_email_sequence
@@ -153,8 +157,16 @@ STRICT RULES:
 - Never say you don't have access to campaign data — always call check_outreach_status instead.
 - NEVER expose internal rule numbers, state field names, or system logic in responses. Talk like a strategist, not a system.
 - Never say "research.done", "rule #4", "content.generated" or any internal variable name to the user.
-- After ANY generation tool completes, reply with __end__. Do NOT summarize what was generated — it is already visible in the UI.
-- After check_outreach_status completes, reply with __end__ unless user asks a follow-up.
+- After ANY generation tool completes, say NOTHING. Do NOT summarize what was generated — it is already visible in the UI.
+- After check_outreach_status completes, say NOTHING unless the user asks a follow-up.
+- If last_action was run_research AND user is asking about existing findings → answer from context, do NOT re-run.
+- If last_action was run_research AND user wants DIFFERENT domains → call run_research with new domains.
+- SYSTEM NOTIFICATION means the tool just ran THIS turn. Do not reference it as a previous action. Stop generating text.
+- AFTER `run_research` COMPLETES:
+   - If the user explicitly requested content generation up front (e.g. "research and write emails") → immediately call the generation tool.
+   - If the user only asked for research → DO NOT call a tool. Briefly summarize the top finding, state which domains were run, and enthusiastically recommend a specific generation step. Ask for their go-ahead. Never say "I see you want to run research but it's done".
+- AFTER `process_feedback` COMPLETES: immediately call the relevant generation tool to generate cycle 2 content. Do NOT wait for user permission.
+- Only ask when genuinely ambiguous — channel choice, segment choice. Never ask about research vs generate.
 """
 
 
@@ -234,21 +246,23 @@ async def base_agent(state: AgentState) -> AgentState:
     tool_name, tool_input, response_text = await call_llm_route(messages, TOOLS)
 
     if not tool_name:
-        print(f"[base_agent] Conversational reply — ending turn")
-        return {
+        print(f"[base_agent] Conversational reply — ending turn", flush=True)
+        ret = {
             **state,
             "next_action":   "__end__",
             "tool_input":    {},
-            "response_text": response_text or "How can I help?",
+            "response_text": response_text.replace("__end__", "").strip(),
             "thinking":      "",
             "_loop_count":   loop_count,
         }
+        print(f"[base_agent] returning: {{'next_action': '__end__', 'response_text': {repr(ret['response_text'])}}}", flush=True)
+        return ret
 
     display_text = response_text or TOOL_MESSAGES.get(tool_name, f"Running {tool_name}…")
 
-    print(f"[base_agent] → {tool_name}")
+    print(f"[base_agent] → {tool_name}", flush=True)
 
-    return {
+    ret = {
         **state,
         "next_action":   tool_name,
         "tool_input":    tool_input,
@@ -256,3 +270,5 @@ async def base_agent(state: AgentState) -> AgentState:
         "thinking":      "",
         "_loop_count":   loop_count,
     }
+    print(f"[base_agent] returning: {{'next_action': '{tool_name}', 'tool_input': json.dumps(tool_input), 'response_text': {repr(display_text)}}}", flush=True)
+    return ret

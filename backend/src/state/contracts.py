@@ -30,6 +30,7 @@ class SynthesisOutput:
     domains_failed: List[str]
     competitive_map: Dict = field(default_factory=dict)
     citations: List[dict] = field(default_factory=list)
+    domain_highlights: Dict = field(default_factory=dict)
 
 # ── 2. Generation Contracts ─────────────────────────────────────────────────
 

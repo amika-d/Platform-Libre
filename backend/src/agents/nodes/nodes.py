@@ -744,7 +744,7 @@ async def update_state_node(state: AgentState) -> AgentState:
             history.append({"role": "assistant", "content": text})
         history.append({
             "role": "user",
-            "content": f"SYSTEM NOTIFICATION: The '{action}' tool completed. Output is now visible to the user in the UI. Do NOT summarize or repeat. Reply with __end__ unless user asks something new."
+            "content": f"SYSTEM NOTIFICATION: '{action}' just completed successfully. Results are now in context. Stop generating text — do not summarize or repeat what ran."
         })
     elif text:
         if not history or history[-1].get("content") != text:

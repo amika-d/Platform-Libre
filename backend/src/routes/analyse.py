@@ -43,36 +43,39 @@ async def _has_checkpoint(agent: Any, config: dict[str, Any]) -> bool:
 async def _build_invoke_input(
     agent: Any, query: str, session_id: str, config: dict[str, Any]
 ) -> dict[str, Any]:
-    """
-    New thread  → full initial state.
-    Existing    → incremental turn input only (approved_prospects carried forward).
-    """
     if await _has_checkpoint(agent, config):
         snapshot = await agent.aget_state(config)
         values = getattr(snapshot, "values", None)
 
-        approved_prospects = []
-        if values is not None:
-            raw = values.get("approved_prospects", []) if isinstance(values, dict) else getattr(values, "approved_prospects", [])
-            for item in (raw or []):
-                if isinstance(item, dict):
-                    approved_prospects.append(item)
-                elif isinstance(item, str):
-                    approved_prospects.append({"name": item, "email": "", "company": "", "linkedin_url": ""})
+        # normalize approved prospects
+        normalized = []
+        for item in (_state_get(values, "approved_prospects", []) or []):
+            if isinstance(item, dict):
+                normalized.append(item)
+            elif isinstance(item, str):
+                normalized.append({"name": item, "email": "", "company": "", "linkedin_url": ""})
 
         return {
-            "query": query,
-            "session_id": session_id,
-            "_loop_count": 0,
-            "next_action": "",
-            "tool_input": {},
-            "response_text": "",
-            "approved_prospects": approved_prospects,
+            "query":                query,
+            "session_id":           session_id,
+            "_loop_count":          0,
+            "next_action":          "",
+            "tool_input":           {},
+            "response_text":        "",
+            "thinking":             "",
+            "last_action":          "",
+            "approved_prospects":   normalized,
+            "summary":              _state_get(values, "summary", ""),
+            "top_opportunities":    _state_get(values, "top_opportunities", []),
+            "top_risks":            _state_get(values, "top_risks", []),
+            "active_domains":       _state_get(values, "active_domains", []),
+            "drafted_variants":     _state_get(values, "drafted_variants", {}),
+            "cycle_number":         _state_get(values, "cycle_number", 1),
+            "confirmed_hypotheses": _state_get(values, "confirmed_hypotheses", []),
+            "failed_angles":        _state_get(values, "failed_angles", []),
         }
 
     return create_initial_state(query, session_id)
-
-
 def _state_get(values: Any, key: str, default: Any = None) -> Any:
     if values is None:
         return default
@@ -138,7 +141,7 @@ async def _agent_sse_generator(agent: Any, query: str, session_id: str, request:
     stream_completed = False
 
     try:
-        stream_iter = agent.astream(state, config, stream_mode="updates").__aiter__()
+        stream_iter = agent.astream(state, config, stream_mode=["updates", "messages"]).__aiter__()
 
         while True:
             if await request.is_disconnected():
@@ -164,8 +167,21 @@ async def _agent_sse_generator(agent: Any, query: str, session_id: str, request:
             finally:
                 if pending_next is not None and pending_next.done():
                     pending_next = None
+            if isinstance(output, tuple):
+                mode, data = output
+                if mode == "messages":
+                    token = data[0].content if data[0].content else ""
+                    if token:
+                        yield _sse({"type": "token", "text": token})
+                    continue
+                elif mode == "updates":
+                    items = data.items()
+                else:
+                    continue
+            else:
+                items = output.items()
 
-            for node_name, state_update in output.items():
+            for node_name, state_update in items:
                 if not isinstance(state_update, dict):
                     continue
 
